@@ -1,0 +1,71 @@
+# Controlled vocabulary for semantic audience/environment labelling (Phase 3.3)
+# and industry->affinity mapping (Phase 5.2). The Step 3.3 LLM agent may only
+# assign labels from this list — anything else is dropped, not invented.
+#
+# poi_type values below are taken verbatim from points_of_interest.csv.
+# environment_type values are derived from the language used across the six
+# supplied campaign briefs (Step 1.8) — extend this list as new briefs arrive,
+# never invent ad hoc labels inline in code.
+
+poi_types:
+  - corporate_campus
+  - entertainment_district
+  - government_building
+  - grocery_anchor
+  - hospital
+  - hotel_convention
+  - museum
+  - office_park
+  - residential_tower
+  - shopping_mall
+  - stadium_arena
+  - tourist_landmark
+  - university
+
+environment_types:
+  - business_district_platform
+  - auto_retail_arterial_corridor
+  - nightlife_entertainment_corridor
+  - campus_edge_transit_node
+  - event_venue_precinct
+  - premium_mall_entry
+  - high_street_retail_corridor
+  - hyperlocal_walking_radius
+  - airport_transit_corridor
+  - premium_business_core
+  - financial_district_node
+  - mall_beauty_retail_entry
+  - central_metro_entry
+
+industries:
+  - auto
+  - cpg
+  - education
+  - entertainment
+  - finance
+  - government
+  - healthcare
+  - hospitality
+  - nonprofit
+  - real_estate
+  - retail
+  - technology
+  - telecom
+
+# industry -> preferred environment_types, used as a Step 5.2 objective_fit
+# prior. Placeholder mapping — refine once Step 1.5 shows which cuts of
+# historical bookings actually correlate with which industries.
+industry_environment_affinity:
+  auto: [auto_retail_arterial_corridor, business_district_platform]
+  cpg: [nightlife_entertainment_corridor, campus_edge_transit_node, event_venue_precinct]
+  entertainment: [event_venue_precinct, nightlife_entertainment_corridor]
+  finance: [business_district_platform, financial_district_node, premium_business_core]
+  healthcare: [hyperlocal_walking_radius, central_metro_entry]
+  hospitality: [airport_transit_corridor, premium_business_core]
+  retail: [premium_mall_entry, high_street_retail_corridor, mall_beauty_retail_entry]
+  technology: [business_district_platform, premium_business_core]
+  telecom: [business_district_platform, campus_edge_transit_node]
+  education: [campus_edge_transit_node]
+  government: [business_district_platform, government_building]
+  real_estate: [business_district_platform, premium_mall_entry]
+  nonprofit: [central_metro_entry, high_street_retail_corridor]

@@ -1,0 +1,39 @@
+# Relevance-scoring weights (Phase 5, Step 5.2).
+# Weights are objective-dependent and config-driven so no engine code
+# hardcodes a magic number. Values are placeholders — calibrate against
+# the Step 1.5/1.9 findings and the Step 2.5 acceptance scenarios before
+# treating any ranking as final.
+
+default:
+  audience_affinity: 0.35
+  daypart_alignment: 0.20
+  environment_poi_fit: 0.25
+  objective_fit: 0.15
+  historical_performance_prior: 0.05   # deliberately small — must never bury cold-start screens
+
+by_objective:
+  awareness:
+    audience_affinity: 0.30
+    daypart_alignment: 0.15
+    environment_poi_fit: 0.30
+    objective_fit: 0.20
+    historical_performance_prior: 0.05
+  conversion:
+    audience_affinity: 0.30
+    daypart_alignment: 0.15
+    environment_poi_fit: 0.35
+    objective_fit: 0.15
+    historical_performance_prior: 0.05
+  frequency:
+    audience_affinity: 0.30
+    daypart_alignment: 0.30
+    environment_poi_fit: 0.15
+    objective_fit: 0.20
+    historical_performance_prior: 0.05
+
+semantic_rerank:
+  enabled: true
+  max_band_positions: 5   # bounded re-rank window — agent cannot promote outside this band
+
+historical_prior:
+  min_bookings_for_full_weight: 10   # below this, prior is down-weighted toward zero

@@ -1,0 +1,13 @@
+# City profile — Accordionshire (ACS)
+# See LH.yaml for field notes.
+
+city_id: ACS
+city_name: "Accordionshire"
+market_tier: value
+transit_density: sprawling
+timezone: "America/Chicago"
+
+pricing:
+  market_tier_multiplier: 1.0   # calibrated in Phase 6; 1.0 = neutral placeholder
+
+taxonomy_overrides: {}

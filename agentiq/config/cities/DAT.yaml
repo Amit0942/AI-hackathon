@@ -1,0 +1,13 @@
+# City profile — DA Town (DAT)
+# See LH.yaml for field notes.
+
+city_id: DAT
+city_name: "DA Town"
+market_tier: standard
+transit_density: mixed
+timezone: "America/Denver"
+
+pricing:
+  market_tier_multiplier: 1.0   # calibrated in Phase 6; 1.0 = neutral placeholder
+
+taxonomy_overrides: {}
