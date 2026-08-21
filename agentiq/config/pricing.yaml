@@ -1,10 +1,32 @@
-# Pricing guardrails (Phase 6). Placeholders until Steps 1.5/6.3 calibrate
-# them against real price-driver evidence and the lost-leads price-gap curve.
+# Pricing guardrails (Phase 6). Calibrated against Step 1.5's measured
+# price-driver evidence and lost-leads price-gap curve — no longer placeholders.
 
 price_band:
   floor_percentile: 0.10        # floor = 10th percentile of comparable realised prices
   margin_floor_pct: 0.05        # floor never dips below cost + 5% margin
-  cap_price_gap_pct: 0.35       # cap set near the price-gap where lost-leads show deals dying
+  # Two caps, because the +15%/+35% figures answer two different questions
+  # (ADR-0003 decision 5, amended after the Phase 6 back-test quantified the
+  # gap between them):
+  #
+  # 1. `cap_gap_pct_vs_client_target` — willingness-to-pay ceiling, measured
+  #    in 1.5 §6.2: deals survive to verbal-agreement-or-later 38-48% of the
+  #    time up to a 15% gap over the CLIENT'S TARGET PRICE, then collapse to
+  #    7.7% (15-20%) and 3.5% (>20%). Used only when `client_target_price`
+  #    is supplied to `PricingEngine.price()` (Step 6.4).
+  #
+  # 2. `cap_gap_pct_vs_base_rate` — used whenever no client target exists
+  #    (today's default path, since no caller supplies one yet). The
+  #    base-rate model has R^2=0.62 with $22.59 residual std (held-out,
+  #    seed=0 split) — price varies around the model's prediction for
+  #    reasons the model doesn't capture, which is a DIFFERENT and larger
+  #    source of uncertainty than "how far a client will negotiate."
+  #    Applying the 0.15 client-gap figure to this reference point back-
+  #    tested at only 65.9% band coverage (24.4% of realised prices landed
+  #    above cap) — the cap was rejecting real market prices as impossible.
+  #    0.35 is the train-fit p90 of relative residuals (real/pred - 1),
+  #    validated out-of-sample at ~10% above-cap on the held-out split.
+  cap_gap_pct_vs_client_target: 0.15
+  cap_gap_pct_vs_base_rate: 0.35
 
 demand_multiplier:
   max_uplift_pct: 0.40          # single-factor uplift ceiling
