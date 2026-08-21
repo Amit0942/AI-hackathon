@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-#: A directory containing this marker is treated as the project root.
-ROOT_MARKERS = ("Urban Media Datasets", "Campaigns")
+#: A directory containing this marker (relative path) is treated as the project root.
+ROOT_MARKERS = ("data/raw/Urban Media Datasets", "data/raw/Campaigns")
 
 
 def find_project_root(start: Path | str | None = None) -> Path:
@@ -33,11 +33,11 @@ class ProjectPaths:
 
     @property
     def raw_data(self) -> Path:
-        return self.root / "Urban Media Datasets"
+        return self.root / "data" / "raw" / "Urban Media Datasets"
 
     @property
     def campaigns(self) -> Path:
-        return self.root / "Campaigns"
+        return self.root / "data" / "raw" / "Campaigns"
 
     @property
     def artifacts(self) -> Path:
@@ -48,6 +48,10 @@ class ProjectPaths:
     def cache(self) -> Path:
         """Parquet mirrors of the large CSVs, for fast reloads."""
         return self.artifacts / "cache"
+
+    @property
+    def config(self) -> Path:
+        return self.root / "config"
 
     @property
     def docs(self) -> Path:

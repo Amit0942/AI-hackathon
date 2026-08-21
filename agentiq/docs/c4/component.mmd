@@ -1,0 +1,65 @@
+%% C4 Component — AgentIQ engine library (Step 2.4)
+%% Drawn from the real src/agentiq/* package tree. "(planned)" = not yet built.
+graph TB
+    subgraph orchestrator["src/agentiq/agents/ (planned) — D5"]
+        planner["Planner-executor<br/>parse_brief -> resolve_entities -><br/>profile_lookup -> score_relevance -><br/>forecast_demand -> price_units -><br/>optimize_package -> compose_recommendation"]
+    end
+
+    subgraph audience["src/agentiq/audience/ (planned) — D1"]
+        staticModel["Static exposure model<br/>POI + zone + stop throughput"]
+        mobileModel["Mobile exposure model<br/>journey / ridership"]
+        semanticLabeller["Semantic environment labeller<br/>(LLM, controlled vocabulary only)"]
+    end
+
+    subgraph relevance["src/agentiq/relevance/ (planned) — D2"]
+        ruleScorer["Rule-based affinity scorer"]
+        rerank["Bounded LLM re-rank<br/>(fixed band only)"]
+    end
+
+    subgraph pricing["src/agentiq/pricing/ (planned) — D3"]
+        demandIndex["Demand intensity index<br/>(Step 6.1)"]
+        baseRate["Base-rate model<br/>(Step 6.3)"]
+        band["Price band + recommended<br/>(Step 6.3-6.4)"]
+        coldStart["Cold-start fallback ladder<br/>(Step 6.5)"]
+    end
+
+    subgraph optimizer["src/agentiq/optimizer/ (planned) — D4"]
+        overlapGraph["Overlap graph<br/>(shared-audience de-dup)"]
+        greedy["Greedy / lazy-greedy<br/>submodular selection"]
+        ilp["ILP / local search<br/>(thorough mode)"]
+    end
+
+    subgraph domain["src/agentiq/domain/ — built"]
+        explanation["Explanation contract"]
+        entities["Screen, CampaignBrief,<br/>PriceQuote, Package, ..."]
+    end
+
+    subgraph dataPkg["src/agentiq/data/ — built"]
+        loaders["DataLake / loaders"]
+        repos["Repository protocols<br/>(ScreenRepository, BookingRepository, ...)"]
+        briefs["Deterministic .docx brief parser"]
+    end
+
+    subgraph obsPkg["src/agentiq/observability/ — built"]
+        trace["TraceRecorder"]
+    end
+
+    planner --> audience
+    planner --> relevance
+    planner --> pricing
+    planner --> optimizer
+    planner --> trace
+
+    audience --> repos
+    relevance --> repos
+    pricing --> repos
+    optimizer --> repos
+
+    audience --> entities
+    relevance --> entities
+    pricing --> entities
+    optimizer --> entities
+
+    entities --> explanation
+    repos --> loaders
+    planner --> briefs

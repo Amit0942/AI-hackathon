@@ -1,0 +1,18 @@
+%% C4 Context — AgentIQ (Step 2.4)
+%% Who/what interacts with the system, at a glance.
+graph TB
+    rep["Sales Rep<br/>(50-person team)"]:::person
+    agentiq["AgentIQ<br/>AI-powered commercial<br/>intelligence platform"]:::system
+    urbanMedia["Urban Media Datasets<br/>14 CSVs: geography, network,<br/>inventory, context, commercial"]:::extSystem
+    campaignDocs["Campaign Brief Documents<br/>(.docx, unstructured)"]:::extSystem
+    llmProvider["LLM Provider (planned)<br/>brief parsing, semantic<br/>labelling, narrative composition"]:::extSystem
+
+    rep -- "pastes/uploads a brief,<br/>reviews recommendation,<br/>gives feedback" --> agentiq
+    agentiq -- "screens, slots, price,<br/>reach, explanation" --> rep
+    agentiq -- "reads (read-only,<br/>never written by code)" --> urbanMedia
+    agentiq -- "parses" --> campaignDocs
+    agentiq -- "bounded, schema-validated<br/>calls only — never authors<br/>a price/score/reach number" --> llmProvider
+
+    classDef person fill:#1f6feb,color:#fff,stroke:#0b4a9e
+    classDef system fill:#238636,color:#fff,stroke:#154c22
+    classDef extSystem fill:#57606a,color:#fff,stroke:#32383f

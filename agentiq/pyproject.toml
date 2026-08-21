@@ -5,7 +5,8 @@ description = "Urban Media Commercial Intelligence Platform — Hack Days 2026 (
 requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2,<3",
-    "numpy>=1.26,<2",
+    "numpy>=1.26,<3",
+    "scikit-learn>=1.5,<2",
     "pyarrow>=16.0",
     "pydantic>=2.7,<3",
     "PyYAML>=6.0",

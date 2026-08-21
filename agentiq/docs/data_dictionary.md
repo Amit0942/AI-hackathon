@@ -1,7 +1,7 @@
 # Data Dictionary — Urban Media Datasets
 
 > **Generated file — do not edit by hand.** Regenerate with `python scripts/build_data_dictionary.py`.
-> Every figure below is measured from the raw CSVs (2026-08-21 11:15 UTC).
+> Every figure below is measured from the raw CSVs (2026-08-21 16:29 UTC).
 
 **Tables:** 14 · **Total rows:** 2,279,693 · **Columns awaiting a stated meaning:** 0
 
@@ -99,7 +99,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `location_id` | object | 0.0% | 910 | — | — | DAT-LOC-0027 (1); LH-LOC-0120 (1); LH-LOC-0135 (1); LH-LOC-0311 (1); LH-LOC-0078 (1); LH-LOC-0210 (1) | Location key, '<CITY>-LOC-nnnn'. 910 locations across the three cities. |
+| `location_id` | object | 0.0% | 910 | — | — | LH-LOC-0120 (1); LH-LOC-0135 (1); LH-LOC-0311 (1); LH-LOC-0078 (1); LH-LOC-0210 (1); LH-LOC-0050 (1) | Location key, '<CITY>-LOC-nnnn'. 910 locations across the three cities. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (350); DAT (300); ACS (260) | Owning city. |
 | `name` | object | 0.0% | 430 | — | — | Cedar Blvd & Prospect St (7); Montrose Ave & Foundry Ln (6); Concourse Ave & Beacon St (6); Cathedral Heights Terminal (6); Grant Rd & Montrose Ave (6); Kingsley Rd & Delancy Ave (5) | Street-intersection or station name. Display only — never match on it. |
 | `city_zone` | object | 0.0% | 30 | — | — | Financial Row (36); Old Mill District (36); Harborfront (36); Downtown Core (36); Uptown Crescent (36); East Commons (34) | Denormalised zone name; zone_id is the join key. Both are always populated. |
@@ -110,7 +110,7 @@
 
 ### `route_stops`
 
-*Layer:* **network** · *Rows:* **2,436** · *Columns:* **11** · *Memory:* 0.8 MB
+*Layer:* **network** · *Rows:* **2,436** · *Columns:* **11** · *Memory:* 0.7 MB
 
 **Grain.** One row per (route, stop_sequence) — a route's ordered stop list.
 
@@ -136,7 +136,7 @@
 
 ### `route_schedules`
 
-*Layer:* **network** · *Rows:* **19,838** · *Columns:* **7** · *Memory:* 5.3 MB
+*Layer:* **network** · *Rows:* **19,838** · *Columns:* **7** · *Memory:* 4.7 MB
 
 **Grain.** One row per scheduled trip (route x day_type x departure time).
 
@@ -146,7 +146,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `schedule_id` | object | 0.0% | 19,838 | — | — | DAT-SCH-006922 (1); LH-SCH-000001 (1); LH-SCH-000002 (1); LH-SCH-000003 (1); LH-SCH-000004 (1); LH-SCH-000005 (1) | Trip key, '<CITY>-SCH-nnnnnn'. One row per scheduled departure. |
+| `schedule_id` | object | 0.0% | 19,838 | — | — | LH-SCH-000001 (1); LH-SCH-000002 (1); LH-SCH-000003 (1); LH-SCH-000004 (1); LH-SCH-000005 (1); LH-SCH-000006 (1) | Trip key, '<CITY>-SCH-nnnnnn'. One row per scheduled departure. |
 | `route_id` | object | 0.0% | 188 | — | — | LH-RT-M006-OUT (244); LH-RT-M010-OUT (243); ACS-RT-M004-OUT (243); LH-RT-M003-OUT (241); DAT-RT-M006-OUT (241); ACS-RT-M002-OUT (240) | Directional route the trip runs on. |
 | `corridor_id` | object | 0.0% | 94 | — | — | LH-RT-M006 (479); LH-RT-M010 (477); ACS-RT-M004 (477); LH-RT-M001 (475); LH-RT-M003 (475); DAT-RT-M006 (474) | Denormalised corridor of that route. |
 | `direction` | category | 0.0% | 2 | — | — | inbound (9,943); outbound (9,895) | inbound / outbound; redundant with the route_id suffix. |
@@ -158,7 +158,7 @@
 
 ### `ridership_actuals`
 
-*Layer:* **network** · *Rows:* **2,049,632** · *Columns:* **7** · *Memory:* 430.5 MB
+*Layer:* **network** · *Rows:* **2,049,632** · *Columns:* **7** · *Memory:* 383.6 MB
 
 **Grain.** One row per (scheduled trip, date) with realised ridership.
 
@@ -180,7 +180,7 @@
 
 ### `vehicles`
 
-*Layer:* **network** · *Rows:* **854** · *Columns:* **5** · *Memory:* 0.2 MB
+*Layer:* **network** · *Rows:* **854** · *Columns:* **5** · *Memory:* 0.1 MB
 
 **Grain.** One row per vehicle carrying screens.
 
@@ -190,7 +190,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `vehicle_id` | object | 0.0% | 854 | — | — | DAT-VEH-00284 (1); LH-VEH-00001 (1); LH-VEH-00002 (1); LH-VEH-00003 (1); LH-VEH-00004 (1); LH-VEH-00005 (1) | Vehicle key, '<CITY>-VEH-nnnnn'. |
+| `vehicle_id` | object | 0.0% | 854 | — | — | LH-VEH-00001 (1); LH-VEH-00002 (1); LH-VEH-00003 (1); LH-VEH-00004 (1); LH-VEH-00005 (1); LH-VEH-00006 (1) | Vehicle key, '<CITY>-VEH-nnnnn'. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (370); DAT (284); ACS (200) | Owning city. |
 | `vehicle_type` | category | 0.0% | 2 | — | — | metro_train (449); bus (405) | metro_train (449) or bus (405). Decides whether a screen's audience is captive riders in a coach or street-facing passers-by. |
 | `corridor_id` | object | 0.0% | 94 | — | — | LH-RT-M003 (25); LH-RT-M013 (25); DAT-RT-M006 (23); LH-RT-M010 (22); LH-RT-M005 (20); ACS-RT-M004 (19) | The corridor the vehicle is assigned to — the mobile screen's exposure path. |
@@ -200,7 +200,7 @@
 
 ### `screens`
 
-*Layer:* **inventory** · *Rows:* **11,163** · *Columns:* **7** · *Memory:* 2.5 MB
+*Layer:* **inventory** · *Rows:* **11,163** · *Columns:* **7** · *Memory:* 2.2 MB
 
 **Grain.** One row per physical screen — the unit that is sold.
 
@@ -210,7 +210,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `screen_id` | object | 0.0% | 11,163 | — | — | DAT-SCR-003123 (1); LH-SCR-000001 (1); LH-SCR-000002 (1); LH-SCR-000003 (1); LH-SCR-000004 (1); LH-SCR-000005 (1) | Screen key, '<CITY>-SCR-nnnnnn'. The sellable asset; 11,163 in total. |
+| `screen_id` | object | 0.0% | 11,163 | — | — | LH-SCR-000001 (1); LH-SCR-000002 (1); LH-SCR-000003 (1); LH-SCR-000004 (1); LH-SCR-000005 (1); LH-SCR-000006 (1) | Screen key, '<CITY>-SCR-nnnnnn'. The sellable asset; 11,163 in total. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (6,304); DAT (3,123); ACS (1,736) | Owning city. |
 | `screen_type` | category | 0.0% | 4 | — | — | metro_station (6,391); bus_stop (2,157); metro_rail_coach (1,400); bus (1,215) | metro_station (6,391) / bus_stop (2,157) / metro_rail_coach (1,400) / bus (1,215). The first two are static, the last two vehicle-mounted — a measured 1:1 match with the location_id / vehicle_id split, so screen_type alone identifies the D1 model. |
 | `location_id` | object | 23.4% | 910 | — | — | LH-LOC-0073 (50); LH-LOC-0078 (50); LH-LOC-0097 (50); LH-LOC-0003 (50); LH-LOC-0047 (50); LH-LOC-0083 (50) | Set for the 8,548 static screens (76.6%), null for mobile ones. |
@@ -242,7 +242,7 @@
 
 ### `points_of_interest`
 
-*Layer:* **context** · *Rows:* **1,375** · *Columns:* **13** · *Memory:* 0.5 MB
+*Layer:* **context** · *Rows:* **1,375** · *Columns:* **13** · *Memory:* 0.4 MB
 
 **Grain.** One row per POI, already anchored to its nearest location.
 
@@ -252,7 +252,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `poi_id` | object | 0.0% | 1,375 | — | — | DAT-POI-0447 (1); LH-POI-0001 (1); LH-POI-0002 (1); LH-POI-0003 (1); LH-POI-0004 (1); LH-POI-0005 (1) | POI key, '<CITY>-POI-nnnn'. |
+| `poi_id` | object | 0.0% | 1,375 | — | — | LH-POI-0001 (1); LH-POI-0002 (1); LH-POI-0003 (1); LH-POI-0004 (1); LH-POI-0005 (1); LH-POI-0006 (1) | POI key, '<CITY>-POI-nnnn'. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (591); DAT (447); ACS (337) | Owning city. |
 | `city_zone` | object | 0.0% | 30 | — | — | Downtown Core (81); Central Yard (69); Old Mill District (61); Harborfront (61); Uptown Crescent (59); Financial Row (58) | Zone name the POI sits in; may differ from the anchor location's zone. |
 | `name` | object | 0.0% | 1,088 | — | — | Metro Fresh Market (4); Landmark Market (4); Metro Corporate Center (4); Founders Square Mall (4); Cedar Business Park (4); Central Yard Business Park (4) | Display name of the POI. |
@@ -270,7 +270,7 @@
 
 ### `events`
 
-*Layer:* **context** · *Rows:* **367** · *Columns:* **14** · *Memory:* 0.2 MB
+*Layer:* **context** · *Rows:* **367** · *Columns:* **14** · *Memory:* 0.1 MB
 
 **Grain.** One row per event occurrence with its impact window.
 
@@ -280,7 +280,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `event_id` | object | 0.0% | 367 | — | — | LH-EVT-00064 (1); ACS-EVT-00062 (1); ACS-EVT-00051 (1); ACS-EVT-00074 (1); ACS-EVT-00055 (1); ACS-EVT-00037 (1) | Event key, '<CITY>-EVT-nnnnn'. |
+| `event_id` | object | 0.0% | 367 | — | — | ACS-EVT-00062 (1); ACS-EVT-00051 (1); ACS-EVT-00074 (1); ACS-EVT-00055 (1); ACS-EVT-00037 (1); ACS-EVT-00001 (1) | Event key, '<CITY>-EVT-nnnnn'. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (157); DAT (119); ACS (91) | Owning city. |
 | `city_zone` | object | 0.0% | 30 | — | — | Financial Row (50); Fallowfield (46); Central Yard (46); Downtown Core (26); Harrow Point (16); Harborfront (16) | Zone the event takes place in. |
 | `poi_id` | object | 23.4% | 147 | — | — | ACS-POI-0337 (40); LH-POI-0590 (35); DAT-POI-0447 (34); DAT-POI-0397 (3); DAT-POI-0048 (3); DAT-POI-0117 (3) | Host POI where one applies; null for 23% of events (street events, parades). |
@@ -309,8 +309,8 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `client_id` | object | 0.0% | 520 | — | — | CLI-00520 (1); CLI-00001 (1); CLI-00002 (1); CLI-00003 (1); CLI-00004 (1); CLI-00005 (1) | Client key, 'CLI-nnnnn'. 520 accounts. |
-| `company_name` | object | 0.0% | 520 | — | — | Drive Automotive #812 (1); Cinema Entertainment (1); Care Clinics (1); Ledger Bank (1); Drive Dealerships (1); Link Networks (1) | Display name of the client. |
+| `client_id` | object | 0.0% | 520 | — | — | CLI-00001 (1); CLI-00002 (1); CLI-00003 (1); CLI-00004 (1); CLI-00005 (1); CLI-00006 (1) | Client key, 'CLI-nnnnn'. 520 accounts. |
+| `company_name` | object | 0.0% | 520 | — | — | Cinema Entertainment (1); Care Clinics (1); Ledger Bank (1); Drive Dealerships (1); Link Networks (1); Neon Live Events (1) | Display name of the client. |
 | `industry` | category | 0.0% | 13 | — | — | retail (76); entertainment (59); finance (52); cpg (50); auto (46); technology (38) | Client's vertical, drawn from the same 13-value set as bookings.industry_vertical. |
 | `client_tier` | category | 0.0% | 3 | — | — | local_business (294); regional_chain (149); national_chain (77) | local_business (294) / regional_chain (149) / national_chain (77). Size of the account; a pricing and leverage input, not an audience one. |
 | `home_city_id` | object | 0.0% | 3 | — | — | ACS (179); LH (176); DAT (165) | City the account is based in; may differ from where it buys. |
@@ -329,7 +329,7 @@
 
 ### `bookings`
 
-*Layer:* **commercial** · *Rows:* **191,109** · *Columns:* **21** · *Memory:* 75.9 MB
+*Layer:* **commercial** · *Rows:* **191,109** · *Columns:* **21** · *Memory:* 68.6 MB
 
 **Grain.** One row per booking line item: a screen x time block held for a date range. Occupancy needs the booking-expansion transform (Step 1.5).
 
@@ -339,7 +339,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `booking_id` | object | 0.0% | 191,109 | — | — | LH-BKG-0191109 (1); DAT-BKG-0000001 (1); DAT-BKG-0000002 (1); DAT-BKG-0000003 (1); DAT-BKG-0000004 (1); LH-BKG-0191093 (1) | Line-item key, '<CITY>-BKG-nnnnnnn'. 191,109 lines. |
+| `booking_id` | object | 0.0% | 191,109 | — | — | DAT-BKG-0000001 (1); DAT-BKG-0000002 (1); DAT-BKG-0000003 (1); DAT-BKG-0000004 (1); DAT-BKG-0000005 (1); DAT-BKG-0000006 (1) | Line-item key, '<CITY>-BKG-nnnnnnn'. 191,109 lines. |
 | `deal_id` | object | 0.0% | 56,762 | — | — | DEAL-000728 (1,045); DEAL-000496 (1,030); DEAL-000971 (1,021); DEAL-000160 (992); DEAL-000897 (968); DEAL-000278 (938) | Groups line items into one negotiated deal — the 'bundle is one deal' key. 56,762 deals; the 55,485 non-bundle lines are one deal each, while 135,624 bundled lines belong to only 1,277 deals (~106 lines per bundle). Bundles dominate value and must be priced jointly, never line by line. |
 | `client_id` | object | 0.0% | 520 | — | — | CLI-00271 (4,603); CLI-00416 (4,106); CLI-00455 (3,961); CLI-00085 (3,861); CLI-00224 (3,718); CLI-00399 (3,683) | Buying account. |
 | `city_id` | object | 0.0% | 3 | — | — | LH (119,967); DAT (53,969); ACS (17,173) | City of the booked screen. |
@@ -365,7 +365,7 @@
 
 ### `lost_leads`
 
-*Layer:* **commercial** · *Rows:* **1,450** · *Columns:* **24** · *Memory:* 0.8 MB
+*Layer:* **commercial** · *Rows:* **1,450** · *Columns:* **24** · *Memory:* 0.7 MB
 
 **Grain.** One row per lost lead / failed negotiation.
 
@@ -375,7 +375,7 @@
 
 | Column | Dtype | Null % | Distinct | Min / Max | Mean | Top values | Meaning |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `lead_id` | object | 0.0% | 1,450 | — | — | LEAD-001450 (1); LEAD-000001 (1); LEAD-000002 (1); LEAD-000003 (1); LEAD-000004 (1); LEAD-000005 (1) | Lead key, 'LEAD-nnnnnn'. 1,450 lost leads. |
+| `lead_id` | object | 0.0% | 1,450 | — | — | LEAD-000001 (1); LEAD-000002 (1); LEAD-000003 (1); LEAD-000004 (1); LEAD-000005 (1); LEAD-000006 (1) | Lead key, 'LEAD-nnnnnn'. 1,450 lost leads. |
 | `client_id` | object | 44.3% | 346 | — | — | CLI-00213 (10); CLI-00435 (10); CLI-00416 (8); CLI-00078 (7); CLI-00026 (7); CLI-00499 (7) | Existing account, where the lead came from one. Null on 643 rows — and those are exactly the rows where company_name_raw is populated, so every lead is identified by one column or the other. Null here means a new prospect, not missing data. |
 | `company_name_raw` | object | 55.7% | 269 | — | — | Prime Boutique (9); Urban Mart (7); Torque Motors (7); Urban Outfitters (6); Trend Boutique (6); Cinema Media Group (6) | Free-text company name for prospects with no account yet (643 rows); null on the 807 rows that do have a client_id. |
 | `industry_vertical` | category | 0.0% | 13 | — | — | retail (240); entertainment (132); cpg (127); healthcare (127); auto (125); finance (122) | Same 13-value vocabulary as bookings; drives segment-level pipeline heat. |

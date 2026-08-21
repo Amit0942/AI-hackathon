@@ -1,0 +1,35 @@
+%% C4 Container — AgentIQ (Step 2.4)
+%% The deployable/runnable units and how they talk to each other.
+graph TB
+    rep["Sales Rep"]:::person
+
+    subgraph agentiq["AgentIQ platform"]
+        ui["ui/ (planned)<br/>D6 frontend<br/>brief intake, live trace,<br/>recommendation, what-if"]:::container
+        api["src/agentiq/api/<br/>FastAPI service<br/>REST endpoints, request<br/>validation, wiring"]:::container
+        orchestrator["src/agentiq/agents/ (planned)<br/>D5 planner-executor<br/>orchestrates typed tool calls"]:::container
+        engines["Engine library<br/>audience / relevance /<br/>pricing / optimizer<br/>(pure, deterministic, in-process)"]:::container
+        domain["src/agentiq/domain/<br/>value objects, enums,<br/>Explanation contract"]:::container
+        dataLayer["src/agentiq/data/<br/>loaders, catalog,<br/>repository protocols"]:::container
+        observability["src/agentiq/observability/<br/>TraceRecorder"]:::container
+        artifacts[("data/artifacts/<br/>precomputed parquet<br/>(git-ignored, rebuilt by<br/>make build)")]:::store
+    end
+
+    rawData[("data/raw/<br/>14 source CSVs<br/>(read-only)")]:::store
+    llm["LLM Provider (planned)"]:::extSystem
+
+    rep -- "HTTPS" --> ui
+    ui -- "REST/JSON" --> api
+    api --> orchestrator
+    orchestrator -- "typed tool calls" --> engines
+    orchestrator -- "bounded, schema-validated calls" --> llm
+    engines -- "depend on protocols only" --> dataLayer
+    engines --> domain
+    orchestrator --> observability
+    engines --> observability
+    dataLayer -- "reads" --> rawData
+    dataLayer -- "reads/writes" --> artifacts
+
+    classDef person fill:#1f6feb,color:#fff,stroke:#0b4a9e
+    classDef container fill:#238636,color:#fff,stroke:#154c22
+    classDef store fill:#8250df,color:#fff,stroke:#5a32a3
+    classDef extSystem fill:#57606a,color:#fff,stroke:#32383f

@@ -89,6 +89,17 @@ implementation swappable for a real database without touching engine code.
   end-to-end. If a change breaks one of these without an explicit, reasoned
   plan update, treat it as a regression.
 
+## Development sequencing: correctness before lint
+
+When actively building or debugging engine logic, prioritize proving
+functional correctness (tests passing against the real data, invariants
+holding) over `ruff`/`mypy` cleanliness. It's fine to land a working engine
+with outstanding lint findings (e.g. line-length) and note them in
+`HANDOFF.md` as a follow-up — but always run `make lint`/`make typecheck`
+and clear the backlog before Phase 10 packaging/submission. Don't let lint
+churn interrupt the verify-the-logic-works loop while a feature is still
+being built.
+
 ## Commands
 
 ```
