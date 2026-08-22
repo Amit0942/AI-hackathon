@@ -1,0 +1,34 @@
+# D4 — Impressions Optimizer guardrails (Phase 7). See
+# docs/decisions/0004-d4-optimizer-scope.md for the reasoning behind every
+# value here.
+
+selection:
+  # Cost-effective greedy (Step 7.2): repeatedly add the affordable candidate
+  # with the highest marginal unique-reach gain per dollar, until no
+  # affordable candidate improves reach. Compared against the best single
+  # affordable candidate alone (whichever wins is returned) — this two-way
+  # comparison is what gives the (1-1/e)/2 approximation guarantee for
+  # monotone submodular maximization under a budget constraint; plain greedy
+  # alone does not have this guarantee.
+  strategy: cost_effective_greedy
+  approximation_guarantee: "(1 - 1/e) / 2 ~= 0.316 of optimal (monotone submodular maximization under one knapsack/budget constraint)"
+  # Step 1.4 measured the real problem size: post-eligibility-filter
+  # candidates number in the low thousands per brief, not millions. This cap
+  # is a safety bound, not the expected operating point; an exact ILP
+  # "thorough mode" is deferred (ADR-0004 decision 3) until a caller needs it
+  # above this scale.
+  max_candidates_considered: 5000
+
+relevance:
+  # D2 (Campaign<->Screen Relevance Scorer) does not exist yet. A candidate
+  # with no supplied RelevanceScore is priced as neutral (mirrors ADR-0003
+  # decision 6's segment_heat precedent) rather than dropped or hardcoded to
+  # zero, so D4 stays independently buildable/testable today and wires a
+  # real score in later with no signature change.
+  neutral_relevance_score: 1.0
+
+allocation:
+  # Default day-type used when a caller does not specify one (ADR-0004
+  # decision 4 — this pass optimizes one time_block_id / day_type per
+  # Package; multi-block joint allocation is a fast-follow).
+  default_day_type: weekday
