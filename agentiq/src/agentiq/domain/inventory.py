@@ -12,6 +12,7 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agentiq.domain.enums import MarketTier, MountPosition, ScreenSize, ScreenType
+from agentiq.domain.explanation import Explanation
 
 #: Measured, proved ceiling (Step 1.4 §1.3) — never a magic number in engine code.
 MAX_ROTATION_SLOTS = 6
@@ -112,6 +113,10 @@ class AudienceProfile(BaseModel):
     has_history: bool = Field(
         description="False triggers the D3 cold-start ladder; D1 itself never has a coverage gap "
         "(Step 1.7 §4 — every screen has POI or ridership coverage)."
+    )
+    explanation: Explanation = Field(
+        description="Per CLAUDE.md's Explanation contract — every scored/ranked output must "
+        "carry one, including this exposure/audience estimate."
     )
 
     @model_validator(mode="after")

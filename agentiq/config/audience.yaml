@@ -1,0 +1,63 @@
+# D1 — Audience Profile Engine guardrails (Phase 3). Every constant here is
+# traceable to a Step 1.6 measured finding — never a bare number in engine code.
+
+poi:
+  # Step 1.6 §3: 0.3-0.5km is the radius that captures real, local signal;
+  # most gain beyond 0.5km is a large-anchor selection effect, not new signal.
+  radius_km_min: 0.3
+  radius_km_max: 0.5
+  # No single flagship POI (e.g. a stadium) may account for more than this
+  # share of a screen's POI-pull component (Step 1.6 §2: "cap any single
+  # POI's contribution").
+  max_single_poi_share: 0.35
+  # side_of_road is NOT a distance proxy (Step 1.6 §3) — modelled as an
+  # independent visibility discount on the far side.
+  far_side_visibility_multiplier: 0.7
+  near_side_visibility_multiplier: 1.0
+  # peak_daypart alignment: a POI contributes its full footfall weight in its
+  # own peak_daypart's time block(s), and a reduced weight off-peak.
+  off_peak_poi_weight: 0.4
+
+mobile:
+  # Interior positions (metro_rail_coach panels) reach captive, dwelling
+  # riders; exterior positions (bus exterior, platform-facing) reach a
+  # street-level glimpse audience. Step 3.2: "interior reaches captive
+  # riders, exterior reaches street pedestrians/traffic."
+  interior_capture_rate: 1.0
+  exterior_glimpse_discount: 0.35
+
+visibility:
+  # Mount-position dwell/attention weights (Step 3.1's "visibility modifier").
+  # Platform/entrance_exit hold a waiting audience; left/right/top/back on a
+  # moving vehicle are glimpse-only, already covered by mobile.* above.
+  position_weight:
+    platform: 1.0
+    entrance_exit: 0.85
+    left: 0.6
+    right: 0.6
+    top: 0.5
+    back: 0.6
+  screen_size_weight:
+    S: 0.85
+    M: 1.0
+    L: 1.15
+
+reach:
+  # Step 3.5: impressions = exposure x attention factor, with diminishing
+  # returns as slots-per-minute rises. attention(slots) = slots ** alpha
+  # (0 < alpha < 1) is strictly concave and equals 1.0 at slots=1 — this is
+  # what proves "doubling slots < doubles impressions" by construction.
+  attention_growth_rate: 0.25  # this is alpha
+  # Unique reach saturates as more screens/impressions stack on the same
+  # audience: unique_reach = impressions_total * (1 - exp(-impressions/scale)) / (impressions/scale)
+  # a smooth de-duplication curve, sub-additive by construction.
+  reach_saturation_scale: 5000.0
+
+overlap:
+  # Screens sharing a POI catchment count as overlapping when they share at
+  # least this fraction of their POI sets (Jaccard), per Step 3.4.
+  poi_jaccard_threshold: 0.3
+  # Two different vehicles on the same corridor see mostly different riders
+  # over a day but some repeat commuters — a stated assumption (no direct
+  # measurement exists for cross-vehicle audience overlap in this dataset).
+  cross_vehicle_same_corridor: 0.4
