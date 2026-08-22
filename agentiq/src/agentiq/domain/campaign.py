@@ -59,7 +59,19 @@ class CampaignBrief(BaseModel):
         description="Fraction of exposure weight biased toward weekend dayparts, if requested.",
     )
     geography_constraints: tuple[GeographyConstraint, ...] = Field(default_factory=tuple)
-    screen_type_exclusions: tuple[str, ...] = Field(default_factory=tuple)
+    screen_type_exclusions: tuple[str, ...] = Field(
+        default_factory=tuple,
+        description="Either a bare 'screen_type' or a compound 'screen_type:position' "
+        "(e.g. 'bus:back' for a bus-rear exclusion) — the latter convention exists because "
+        "some real exclusions (Step 1.8's 'bus-rear screens') name a type+position pair, "
+        "which no single enum field can express alone.",
+    )
+    requested_environment_types: tuple[str, ...] = Field(
+        default_factory=tuple,
+        description="Step 4.2 output: brief location language resolved onto "
+        "config/taxonomy.yaml's environment_types vocabulary. Feeds Phase 5.2's "
+        "environment/POI fit signal and Phase 5.1's exclusion checks.",
+    )
     minimum_relevance_threshold: float = Field(
         default=0.0,
         ge=0.0,

@@ -34,6 +34,12 @@ by_objective:
 semantic_rerank:
   enabled: true
   max_band_positions: 5   # bounded re-rank window — agent cannot promote outside this band
+  # No LLM endpoint is configured in this environment (Step 5.3 asks for one) — the
+  # deterministic fallback (agentiq.relevance.rerank) only reorders within a band when
+  # two screens' primary scores differ by less than this, breaking the tie on
+  # environment-label overlap count. This keeps the fallback bounded and evidence-based
+  # rather than an arbitrary reshuffle.
+  tie_epsilon: 0.02
 
 historical_prior:
   min_bookings_for_full_weight: 10   # below this, prior is down-weighted toward zero
