@@ -134,7 +134,14 @@ def event_surge(
     on_daypart = active_events.loc[active_events["primary_impact_daypart"] == time_block_daypart]
     if on_daypart.empty:
         return 0.0
-    weights = on_daypart["attendance_tier"].map(EVENT_TIER_WEIGHT).fillna(0.0)
+    # `.astype(str)` first: `attendance_tier` is a pandas `category` dtype
+    # column, and `.map(...)` on a Categorical can return a Categorical
+    # result whose `.fillna(0.0)` then raises ("Cannot setitem on a
+    # Categorical with a new category") even though every real value maps
+    # successfully — found while running D5 end-to-end against a brief with
+    # an active event (ADR-0006). Casting to plain strings first avoids any
+    # categorical-dtype propagation through `.map`/`.fillna`.
+    weights = on_daypart["attendance_tier"].astype(str).map(EVENT_TIER_WEIGHT).fillna(0.0)
     return float(weights.sum())
 
 

@@ -1,26 +1,32 @@
 %% C4 Component — AgentIQ engine library (Step 2.4)
 %% Drawn from the real src/agentiq/* package tree. "(planned)" = not yet built.
 graph TB
-    subgraph orchestrator["src/agentiq/agents/ (planned) — D5"]
-        planner["Planner-executor<br/>parse_brief -> resolve_entities -><br/>profile_lookup -> score_relevance -><br/>forecast_demand -> price_units -><br/>optimize_package -> compose_recommendation"]
+    subgraph orchestrator["src/agentiq/agents/ — built (Phase 8, Steps 7.3/7.4/6.2/6.6-informed narrative planned deeper)"]
+        planner["Planner-executor<br/>parse_brief -> resolve_entities -><br/>profile_lookup -> score_relevance -><br/>optimize_package -> compose_recommendation<br/>(price_units runs inside optimize_package)"]
+        narrativeMod["Deterministic narrative + <br/>ADR-0001 number-validator<br/>(no LLM endpoint configured)"]
     end
 
-    subgraph audience["src/agentiq/audience/ (planned) — D1"]
+    subgraph resolution["src/agentiq/data/resolution.py — built (Phase 4, Steps 4.1-4.3)"]
+        resolveEntities["resolve_brief(): text -> CampaignBrief<br/>+ ClarificationQuestion (ask, don't guess)"]
+    end
+
+    subgraph audience["src/agentiq/audience/ — built (Steps 3.1-3.5)"]
         staticModel["Static exposure model<br/>POI + zone + stop throughput"]
         mobileModel["Mobile exposure model<br/>journey / ridership"]
-        semanticLabeller["Semantic environment labeller<br/>(LLM, controlled vocabulary only)"]
+        semanticLabeller["Semantic environment labeller<br/>(deterministic rule fallback —<br/>no LLM endpoint configured)"]
     end
 
-    subgraph relevance["src/agentiq/relevance/ (planned) — D2"]
+    subgraph relevance["src/agentiq/relevance/ — built (Steps 5.1-5.4)"]
         ruleScorer["Rule-based affinity scorer"]
-        rerank["Bounded LLM re-rank<br/>(fixed band only)"]
+        rerank["Bounded rerank<br/>(deterministic fallback; fixed band only)"]
     end
 
-    subgraph pricing["src/agentiq/pricing/ (planned) — D3"]
+    subgraph pricing["src/agentiq/pricing/ — built (Steps 6.1-6.6)"]
         demandIndex["Demand intensity index<br/>(Step 6.1)"]
         baseRate["Base-rate model<br/>(Step 6.3)"]
         band["Price band + recommended<br/>(Step 6.3-6.4)"]
         coldStart["Cold-start fallback ladder<br/>(Step 6.5)"]
+        footfall["Footfall forecast + overrides<br/>(Steps 6.2, 6.6)"]
     end
 
     subgraph optimizer["src/agentiq/optimizer/ — built (Steps 7.1-7.2; 7.3/7.4 planned)"]
@@ -40,26 +46,36 @@ graph TB
         briefs["Deterministic .docx brief parser"]
     end
 
-    subgraph obsPkg["src/agentiq/observability/ — built"]
+    subgraph obsPkg["src/agentiq/observability/ — built, wired into D5"]
         trace["TraceRecorder"]
     end
 
+    planner --> resolution
     planner --> audience
     planner --> relevance
     planner --> pricing
     planner --> optimizer
     planner --> trace
+    planner --> narrativeMod
 
+    resolution --> repos
     audience --> repos
     relevance --> repos
     pricing --> repos
     optimizer --> repos
 
+    resolution --> entities
     audience --> entities
     relevance --> entities
     pricing --> entities
     optimizer --> entities
+    narrativeMod --> entities
+
+    relevance --> audience
+    optimizer --> audience
+    optimizer --> pricing
 
     entities --> explanation
     repos --> loaders
     planner --> briefs
+    resolution --> briefs

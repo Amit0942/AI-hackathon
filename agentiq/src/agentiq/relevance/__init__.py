@@ -145,11 +145,37 @@ class RelevanceEngine:
         screens: tuple[Screen, ...] | None = None,
         *,
         top_n: int | None = None,
+        require_environment_match: bool = False,
     ) -> tuple[RelevanceScore, ...]:
-        """Full Phase 5 pipeline: eligibility filter -> score -> bounded rerank."""
+        """Full Phase 5 pipeline: eligibility filter -> score -> bounded rerank.
+
+        `require_environment_match`, if `True` and `brief.requested_environment_types`
+        is non-empty, additionally drops any eligible screen whose D1
+        `AudienceProfile.environment_labels` shares nothing with the brief's
+        requested types — added for D5 (ADR-0006), which needs a
+        deterministic guarantee that a recommended screen actually carries a
+        requested environment label, stronger than the Step 5.2 weighted
+        signal alone provides. Falls back to no filtering (recording nothing
+        dropped) if it would eliminate every eligible screen — e.g. a brief
+        requesting only `airport_transit_corridor`, which no POI type in
+        this dataset grounds (per D1's own finding) would otherwise return
+        zero candidates, which is worse than an unfiltered, ranked list.
+        Default `False` preserves this method's original behaviour exactly.
+        """
         candidates = screens or self._screens
         eligibility = self.eligible_screens(brief, candidates)
         eligible_ids = {r.screen_id for r in eligibility if r.eligible}
+
+        if require_environment_match and brief.requested_environment_types:
+            requested = set(brief.requested_environment_types)
+            matching_ids = {
+                sid
+                for sid in eligible_ids
+                if self._environment_overlap_count(sid, requested) > 0
+            }
+            if matching_ids:
+                eligible_ids = matching_ids
+
         by_id = {s.screen_id: s for s in candidates}
 
         scores = [self.score(brief, by_id[sid]) for sid in eligible_ids]

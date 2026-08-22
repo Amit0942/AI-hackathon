@@ -98,6 +98,7 @@ class OptimizerEngine:
         relevance_scores: dict[str, RelevanceScore] | None = None,
         day_type: str | None = None,
         label: str = "max-reach",
+        candidate_screens: tuple[Screen, ...] | None = None,
     ) -> Package:
         """Return a priced, budget-constrained, de-duplicated-reach `Package`
         for one time block (ADR-0004 decision 4).
@@ -108,13 +109,19 @@ class OptimizerEngine:
         callable in isolation). `relevance_scores` is optional pending D2
         (ADR-0004 decision 2): any screen with no entry is priced as neutral
         and the substitution is recorded in the returned `Package`.
+
+        `candidate_screens`, if supplied, restricts candidate generation to
+        exactly this set instead of `repos.screens.all()` — added for D5
+        (ADR-0006), which pre-shortlists via D2's `RelevanceEngine.rank()`
+        before optimizing, rather than repricing the whole network per
+        brief. `None` preserves this method's original behaviour exactly.
         """
         resolved_day_type = day_type or self.config.default_day_type
         resolved_date = on_date or brief.start_date or date.today()
         relevance_scores = relevance_scores or {}
 
         candidates, generation_rejections = self._generate_candidates(
-            brief, time_block_id, resolved_date, slots, relevance_scores
+            brief, time_block_id, resolved_date, slots, relevance_scores, candidate_screens
         )
         eligible, filter_rejections = filter_eligible(candidates, brief)
         rejections = generation_rejections + filter_rejections
@@ -147,12 +154,13 @@ class OptimizerEngine:
         on_date: date,
         slots: int,
         relevance_scores: dict[str, RelevanceScore],
+        candidate_screens: tuple[Screen, ...] | None = None,
     ) -> tuple[tuple[Candidate, ...], tuple[Rejection, ...]]:
         end_date = on_date + timedelta(days=brief.duration_days - 1)
         candidates: list[Candidate] = []
         rejections: list[Rejection] = []
 
-        for screen in self.repos.screens.all():
+        for screen in candidate_screens or self.repos.screens.all():
             if len(candidates) >= self.config.max_candidates_considered:
                 break
             geo_reason = self._geography_rejection_reason(screen, brief)

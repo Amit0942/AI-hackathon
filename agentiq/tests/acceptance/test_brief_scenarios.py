@@ -20,9 +20,43 @@ from agentiq.data.briefs import (
     parse_brief,
 )
 from agentiq.data.paths import ProjectPaths
+from agentiq.data.repositories import InMemoryRepositories
 from tests.acceptance.fixtures import SCENARIOS, AcceptanceScenario
 
 paths = ProjectPaths()
+
+
+@pytest.fixture(scope="module")
+def repos() -> InMemoryRepositories:
+    return InMemoryRepositories()
+
+
+@pytest.fixture(scope="module")
+def engines(repos: InMemoryRepositories):
+    """One shared set of D1-D4 engines for the whole module.
+
+    `run_brief_to_recommendation` default-constructs fresh engines when none
+    are supplied (the right default for a single ad hoc call), but the six
+    scenarios here would otherwise each re-fit D3's base-rate/win-probability
+    models and re-cache D1's ~11k `AudienceProfile`s from scratch — sharing
+    one set across the module is what keeps this test file's runtime sane.
+    """
+    from agentiq.audience import AudienceProfileEngine
+    from agentiq.optimizer import OptimizerEngine
+    from agentiq.pricing import PricingEngine
+    from agentiq.relevance import RelevanceEngine
+
+    audience_engine = AudienceProfileEngine(repos)
+    pricing_engine = PricingEngine(repos, audience_engine=audience_engine)
+    relevance_engine = RelevanceEngine(repos, audience_engine=audience_engine)
+    optimizer_engine = OptimizerEngine(repos, audience_engine, pricing_engine)
+    return {
+        "repos": repos,
+        "audience_engine": audience_engine,
+        "pricing_engine": pricing_engine,
+        "relevance_engine": relevance_engine,
+        "optimizer_engine": optimizer_engine,
+    }
 
 
 def _load(scenario: AcceptanceScenario) -> tuple[CampaignBriefDocument, DerivedBriefFields]:
@@ -129,69 +163,134 @@ def test_all_six_briefs_are_covered() -> None:
 
 
 # ---------------------------------------------------------------- end-to-end (Phase 8)
-_E2E_REASON = (
-    "Phase 8 orchestrator (parse_brief -> ... -> compose_recommendation) is not built "
-    "yet — see solution_plan.md Phase 8. Collected here per Step 2.5 so the definition "
-    "of done is visible before the code exists."
-)
+# Phase 8's orchestrator (agentiq.agents.run_brief_to_recommendation) is now built —
+# see docs/decisions/0006-d5-orchestrator-scope.md. The five tests below were
+# collected as xfail(strict=True) placeholders per Step 2.5 so the definition of
+# done was visible before the code existed; their bodies are now the real
+# assertions, and the xfail marker is removed per this repo's own convention
+# (HANDOFF.md: "strict=True means these fail the suite the moment they start
+# passing without the marker being removed").
 
 
-@pytest.mark.xfail(reason=_E2E_REASON, strict=True)
+def _run(engines: dict, filename: str):
+    from agentiq.agents import run_brief_to_recommendation
+
+    return run_brief_to_recommendation(paths.campaigns / filename, **engines)
+
+
+def _resolved(engines: dict, filename: str):
+    from agentiq.agents import resolve_entities
+
+    return resolve_entities(paths.campaigns / filename, engines["repos"])
+
+
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: f"brief_{s.brief_number}")
-def test_recommendation_only_uses_required_environments(scenario: AcceptanceScenario) -> None:
+def test_recommendation_only_uses_required_environments(
+    scenario: AcceptanceScenario, engines: dict
+) -> None:
     """Every recommended screen's audience profile must carry at least one of
     this brief's expected environment labels — a premium brief must not be
     padded with unrelated inventory just to hit a budget.
     """
-    from agentiq.agents import run_brief_to_recommendation  # Phase 8, not yet built
+    recommendation = _run(engines, scenario.source_file)
+    audience_engine = engines["audience_engine"]
+    requested = set(recommendation.brief.requested_environment_types)
+    if not requested:
+        pytest.skip(f"brief {scenario.brief_number} resolved no requested_environment_types")
 
-    recommendation = run_brief_to_recommendation(paths.campaigns / scenario.source_file)
     for package in recommendation.packages:
-        for _line in package.lines:
-            raise AssertionError("Phase 8 not implemented")
+        for line in package.lines:
+            profile = audience_engine.get(line.screen_id)
+            assert profile is not None
+            assert set(profile.environment_labels) & requested, (
+                f"brief {scenario.brief_number}: screen {line.screen_id} carries none of "
+                f"the requested environment types {requested} "
+                f"(has {profile.environment_labels})"
+            )
 
 
-@pytest.mark.xfail(reason=_E2E_REASON, strict=True)
-def test_zephyr_ev_excludes_bus_rear_and_value_tier_residential() -> None:
+def test_zephyr_ev_excludes_bus_rear_and_value_tier_residential(engines: dict) -> None:
     """Brief 1's hard exclusion: no bus-rear screens, no value-tier inventory
     in high-density residential areas, anywhere in the returned package.
     """
-    from agentiq.agents import run_brief_to_recommendation
+    repos = engines["repos"]
+    recommendation = _run(engines, "campaign_1.docx")
+    resolved = _resolved(engines, "campaign_1.docx")
+    excluded_zones = {
+        c.zone_name
+        for c in resolved.brief.geography_constraints
+        if c.is_exclusion and c.zone_name
+    }
+    assert excluded_zones, "expected the value-tier residential proxy to exclude >=1 zone"
 
-    run_brief_to_recommendation(paths.campaigns / "campaign_1.docx")
-    raise AssertionError("Phase 8 not implemented")
+    for line in recommendation.primary_package.lines:
+        screen = repos.screens.get(line.screen_id)
+        assert screen is not None
+        is_bus_rear = (
+            screen.screen_type.value == "bus"
+            and screen.position is not None
+            and screen.position.value == "back"
+        )
+        assert not is_bus_rear, (
+            f"bus-rear screen {line.screen_id} was recommended despite the hard exclusion"
+        )
+        if screen.is_static and screen.location_id is not None:
+            zone = repos.geography.zone_for_location(screen.location_id)
+            zone_name = zone["zone_name"] if zone is not None else None
+            assert zone_name not in excluded_zones, (
+                f"screen {line.screen_id} in excluded zone {zone_name!r} was recommended"
+            )
 
 
-@pytest.mark.xfail(reason=_E2E_REASON, strict=True)
-def test_basil_and_bloom_stays_within_walking_radius() -> None:
+def test_basil_and_bloom_stays_within_walking_radius(engines: dict) -> None:
     """Brief 4's hyper-local exclusion: every recommended screen must fall
     inside the stated walking radius of the single new outlet — the
     acceptance-test example named explicitly in solution_plan.md Step 2.5.
     """
-    from agentiq.agents import run_brief_to_recommendation
+    repos = engines["repos"]
+    recommendation = _run(engines, "campaign_4.docx")
+    resolved = _resolved(engines, "campaign_4.docx")
+    hyperlocal = [
+        c
+        for c in resolved.brief.geography_constraints
+        if not c.is_exclusion and c.zone_name is not None
+    ]
+    assert len(hyperlocal) == 1, "expected exactly one zone-level hyperlocal constraint"
+    allowed_zone = hyperlocal[0].zone_name
+    allowed_city = hyperlocal[0].city_id
 
-    run_brief_to_recommendation(paths.campaigns / "campaign_4.docx")
-    raise AssertionError("Phase 8 not implemented")
+    for line in recommendation.primary_package.lines:
+        screen = repos.screens.get(line.screen_id)
+        assert screen is not None
+        assert screen.city_id == allowed_city
+        assert screen.is_static and screen.location_id is not None
+        zone = repos.geography.zone_for_location(screen.location_id)
+        assert zone is not None and zone["zone_name"] == allowed_zone, (
+            f"screen {line.screen_id} in zone {zone} falls outside the resolved "
+            f"hyperlocal zone {allowed_zone!r}"
+        )
 
 
-@pytest.mark.xfail(reason=_E2E_REASON, strict=True)
-def test_every_price_cites_a_cold_start_ladder_rung() -> None:
+def test_every_price_cites_a_cold_start_ladder_rung(engines: dict) -> None:
     """Step 6 exit criterion: every price in every recommendation cites its
     ladder rung, across all six briefs."""
-    from agentiq.agents import run_brief_to_recommendation
+    from agentiq.domain.enums import ColdStartRung
 
     for scenario in SCENARIOS:
-        run_brief_to_recommendation(paths.campaigns / scenario.source_file)
-        raise AssertionError("Phase 8 not implemented")
+        recommendation = _run(engines, scenario.source_file)
+        for line in recommendation.primary_package.lines:
+            assert isinstance(line.price_quote.cold_start_rung, ColdStartRung)
 
 
-@pytest.mark.xfail(reason=_E2E_REASON, strict=True)
-def test_every_recommendation_number_validates_against_narrative() -> None:
+def test_every_recommendation_number_validates_against_narrative(engines: dict) -> None:
     """ADR-0001 hard rule: the narrative agent may not alter computed
     numbers. Every figure quoted in `Recommendation.narrative` must match
     the structured `Recommendation.packages` payload exactly."""
-    from agentiq.agents import run_brief_to_recommendation
+    from agentiq.agents.narrative import validate_narrative_matches_recommendation
 
     for scenario in SCENARIOS:
-        run_brief_to_recommendation(paths.campaigns / scenario.source_file)
-        raise AssertionError("Phase 8 not implemented")
+        recommendation = _run(engines, scenario.source_file)
+        # run_brief_to_recommendation already validates internally before
+        # returning; re-validating here is the acceptance-level guarantee,
+        # independent of that internal call.
+        validate_narrative_matches_recommendation(recommendation)

@@ -69,3 +69,121 @@ industry_environment_affinity:
   government: [business_district_platform, government_building]
   real_estate: [business_district_platform, premium_mall_entry]
   nonprofit: [central_metro_entry, high_street_retail_corridor]
+
+# Phase 4 (Step 4.2) brief-resolution rules — see docs/decisions/0005-phase4-
+# brief-resolution-scope.md for the reasoning behind every rule below. Every
+# entry here is traced to language in the six real briefs (docs/briefs/*.md
+# in the Step 1.8 gold parses), never invented ad hoc in code.
+brief_resolution:
+  # (keyword substring, resolved value) pairs, checked case-insensitively
+  # against `industry_vertical_raw`. Ordered most-specific first; the FIRST
+  # matching keyword wins. A brief whose raw text matches none of these
+  # falls back to `default_industry_vertical` and is flagged unresolved.
+  industry_vertical_keywords:
+    - ["electric vehicle", "auto"]
+    - ["automotive", "auto"]
+    - ["fmcg", "cpg"]
+    - ["beverage", "cpg"]
+    - ["fashion", "retail"]
+    - ["apparel", "retail"]
+    - ["beauty", "retail"]
+    - ["personal care", "retail"]
+    - ["cosmetic", "retail"]
+    - ["food & beverage", "hospitality"]
+    - ["qsr", "hospitality"]
+    - ["restaurant", "hospitality"]
+    - ["travel", "hospitality"]
+    - ["aviation", "hospitality"]
+    - ["airline", "hospitality"]
+    - ["retail", "retail"]
+    - ["technology", "technology"]
+    - ["finance", "finance"]
+    - ["healthcare", "healthcare"]
+    - ["education", "education"]
+    - ["telecom", "telecom"]
+    - ["government", "government"]
+    - ["real estate", "real_estate"]
+    - ["nonprofit", "nonprofit"]
+    - ["entertainment", "entertainment"]
+  default_industry_vertical: retail
+
+  # Same shape as above, but matched by EARLIEST position of the keyword in
+  # the raw text (not first-in-list) — the six real briefs all state a
+  # compound objective ("X & Y"), and the one stated first is the primary.
+  objective_keywords:
+    - ["awareness", "awareness"]
+    - ["footfall", "conversion"]
+    - ["recall", "awareness"]
+    - ["trial", "conversion"]
+    - ["purchase", "conversion"]
+    - ["booking", "conversion"]
+    - ["launch", "awareness"]
+    - ["frequency", "frequency"]
+    - ["reach", "reach"]
+  default_objective: awareness
+
+  # Free-text location-requirement LABEL (the bold heading before the colon
+  # in Digital Screen Selection & Location Requirements) -> environment_type.
+  # Built to match the six real briefs' own labels, per HANDOFF.md's note
+  # that config/taxonomy.yaml's environment_types list was itself derived
+  # from this language 1:1.
+  location_label_environment_types:
+    "High-Dwell Business-District Platforms": business_district_platform
+    "Auto-Retail Arterial Corridors": auto_retail_arterial_corridor
+    "Nightlife and Entertainment Corridors": nightlife_entertainment_corridor
+    "Campus-Edge Transit Nodes": campus_edge_transit_node
+    "Event-Venue Precincts": event_venue_precinct
+    "Premium Mall Entry Points": premium_mall_entry
+    "High-Street Retail Corridors": high_street_retail_corridor
+    "Immediate Walking Radius of the New Outlet": hyperlocal_walking_radius
+    "Midday Commercial-District Coverage": business_district_platform
+    "Airport Transit Corridor": airport_transit_corridor
+    "Premium Business Core": premium_business_core
+    "Financial District Coverage": financial_district_node
+    "Mall Beauty-Retail Entry": mall_beauty_retail_entry
+    "Central Metro Entry Coverage": central_metro_entry
+
+  # Exclusion/location free text -> a screen_type_exclusions rule in
+  # CampaignBrief's own "type" or "type:position" convention.
+  screen_exclusion_phrases:
+    "bus-rear": "bus:back"
+    "bus rear": "bus:back"
+
+  # A brief's exclusion text naming this phrase triggers the value-tier /
+  # high-density-residential zone proxy (Step 1.8's "no within-city
+  # inventory tier anywhere in the schema" finding) rather than a literal
+  # market_tier lookup, which is city-grain only.
+  value_tier_residential_trigger_phrases: ["value-tier", "value tier"]
+  value_tier_residential_income_index_max: 100.0
+  value_tier_residential_density_min: 6000
+
+  # Daypart language -> `time_block_id`s (dim_slot: 1=night 00-04, 2=morning
+  # 04-08, 3=midday 08-12, 4=afternoon 12-16, 5=evening 16-20, 6=night
+  # 20-24). "midday"/"lunch" deliberately maps to block 4, not block 3 —
+  # dim_slot's own "midday" label (08-12) is too early for a stated
+  # lunch-hour window; block 4 (12-16) is the defensible single-block buy
+  # (docs/briefs/campaign_4.md §5.2).
+  daypart_keywords:
+    "late evening": [6]
+    "early morning": [1]
+    "lunch": [4]
+    "midday": [4]
+    "friday evening": [5]
+
+  # Weekend/weekday weighting language -> `weekend_weighting` (fraction of
+  # exposure weight biased toward weekend dayparts). Two tiers: an explicit
+  # "weekend weighting" statement is fully weekend-biased; a softer
+  # "ahead of the weekend" mention is a partial bias, not a firm request.
+  weekend_weighting_strong_phrases: ["weekend weighting", "friday evening through sunday"]
+  weekend_weighting_strong_value: 1.0
+  weekend_weighting_soft_phrases: ["weekend shopping", "ahead of the weekend"]
+  weekend_weighting_soft_value: 0.5
+
+  # Step 4.3 default when a brief's outlet/anchor POI is named only by type
+  # (e.g. "a business-park food court") with no identifying name: pick the
+  # single highest-`est_daily_footfall` POI of the stated type(s) in the
+  # resolved city, and narrow to *its zone* (GeographyConstraint has no
+  # location-level field, so a zone is the finest hard-filter granularity
+  # available — a stated approximation, not a true walking radius).
+  hyperlocal_outlet_poi_types: [office_park, corporate_campus]
+  hyperlocal_radius_km_default: 0.5
