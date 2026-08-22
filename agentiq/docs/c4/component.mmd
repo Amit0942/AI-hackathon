@@ -23,10 +23,10 @@ graph TB
         coldStart["Cold-start fallback ladder<br/>(Step 6.5)"]
     end
 
-    subgraph optimizer["src/agentiq/optimizer/ (planned) — D4"]
-        overlapGraph["Overlap graph<br/>(shared-audience de-dup)"]
-        greedy["Greedy / lazy-greedy<br/>submodular selection"]
-        ilp["ILP / local search<br/>(thorough mode)"]
+    subgraph optimizer["src/agentiq/optimizer/ — built (Steps 7.1-7.2; 7.3/7.4 planned)"]
+        candidateGen["Candidate generation +<br/>eligibility filter (Step 7.1)"]
+        greedy["Cost-effective greedy +<br/>best-singleton comparison (Step 7.2)<br/>(1-1/e)/2 guarantee"]
+        ilp["ILP / local search<br/>(thorough mode, planned)"]
     end
 
     subgraph domain["src/agentiq/domain/ — built"]
