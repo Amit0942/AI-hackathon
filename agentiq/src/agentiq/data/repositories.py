@@ -138,6 +138,16 @@ class NetworkRepository(Protocol):
         """Scheduled trips per *day_type* on this corridor — mobile exposure opportunity count."""
         ...
 
+    def ridership_cv_for_location(self, location_id: str, day_type: str) -> float:
+        """Coefficient of variation (std/mean) of this location's total daily
+        ridership across the observed dates in `ridership_actuals` — the
+        measured day-to-day variability a Step 6.2 forecast's confidence
+        interval is built from. 0.0 when fewer than two observed dates exist.
+        """
+        ...
+
+    def ridership_cv_for_corridor(self, corridor_id: str, day_type: str) -> float: ...
+
 
 @runtime_checkable
 class AudienceProfileRepository(Protocol):
@@ -327,6 +337,18 @@ def bucket_time_to_block(hhmm: str) -> int:
     return block
 
 
+def _coefficient_of_variation(values: pd.Series) -> float:
+    """std/mean across observed dates; 0.0 with fewer than two dates or a
+    zero mean, rather than a NaN a forecast's confidence interval would
+    silently propagate."""
+    if len(values) < 2:
+        return 0.0
+    mean = float(values.mean())
+    if mean <= 0:
+        return 0.0
+    return float(values.std()) / mean
+
+
 class InMemoryNetworkRepository:
     """`NetworkRepository` backed by `vehicles`, `route_stops`, `route_schedules`,
     `ridership_actuals`.
@@ -362,6 +384,16 @@ class InMemoryNetworkRepository:
             .reset_index()
         )
 
+        # Full-day (all blocks summed) ridership per route x date — the basis
+        # for the Step 6.2 forecast's measured day-to-day variability, kept
+        # separate from the per-block averages above (which collapse dates).
+        route_day_date = ["route_id", "corridor_id", "day_type", "date"]
+        route_date_total = (
+            daily_route.groupby(route_day_date, observed=True)["actual_ridership"]
+            .sum()
+            .reset_index()
+        )
+
         # Corridor level: mean across the corridor's directional routes (a
         # given vehicle serves one direction at a time, so summing both
         # directions would double-count a single vehicle's exposure).
@@ -380,6 +412,19 @@ class InMemoryNetworkRepository:
             "actual_ridership"
         ].sum()
         self._corridor_daily_total: dict[tuple[str, str], float] = corridor_daily_series.to_dict()
+
+        corridor_date_total = (
+            route_date_total.groupby(["corridor_id", "day_type", "date"], observed=True)[
+                "actual_ridership"
+            ]
+            .mean()  # mean across directional routes, same convention as corridor_block_avg
+            .reset_index()
+        )
+        self._corridor_cv: dict[tuple[str, str], float] = (
+            corridor_date_total.groupby(corridor_day, observed=True)["actual_ridership"]
+            .agg(_coefficient_of_variation)
+            .to_dict()
+        )
 
         # Location level: sum across every route serving that stop (more
         # routes through a location means more audience, so this is additive
@@ -404,6 +449,18 @@ class InMemoryNetworkRepository:
             "actual_ridership"
         ].sum()
         self._location_daily_total: dict[tuple[str, str], float] = location_daily_series.to_dict()
+
+        location_date_total = (
+            route_stops.merge(route_date_total, on=["route_id", "corridor_id"], how="inner")
+            .groupby(["location_id", "day_type", "date"], observed=True)["actual_ridership"]
+            .sum()
+            .reset_index()
+        )
+        self._location_cv: dict[tuple[str, str], float] = (
+            location_date_total.groupby(location_day, observed=True)["actual_ridership"]
+            .agg(_coefficient_of_variation)
+            .to_dict()
+        )
 
         trip_counts = (
             schedules.groupby(corridor_day, observed=True)["schedule_id"].nunique().reset_index()
@@ -465,6 +522,12 @@ class InMemoryNetworkRepository:
 
     def trip_frequency(self, corridor_id: str, day_type: str) -> int:
         return self._trip_frequency.get((corridor_id, day_type), 0)
+
+    def ridership_cv_for_location(self, location_id: str, day_type: str) -> float:
+        return self._location_cv.get((location_id, day_type), 0.0)
+
+    def ridership_cv_for_corridor(self, corridor_id: str, day_type: str) -> float:
+        return self._corridor_cv.get((corridor_id, day_type), 0.0)
 
 
 class InMemoryRepositories:
