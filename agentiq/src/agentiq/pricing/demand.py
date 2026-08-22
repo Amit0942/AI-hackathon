@@ -134,7 +134,16 @@ def event_surge(
     on_daypart = active_events.loc[active_events["primary_impact_daypart"] == time_block_daypart]
     if on_daypart.empty:
         return 0.0
-    weights = on_daypart["attendance_tier"].map(EVENT_TIER_WEIGHT).fillna(0.0)
+    # `attendance_tier` loads as a pandas `category` dtype (catalog.py). Its
+    # categories are exactly {'small','medium','large'}, all covered by
+    # EVENT_TIER_WEIGHT, so no NaN can ever actually occur here — but
+    # `.map()` on a Categorical returns a Categorical result too, and
+    # `.fillna(0.0)` on THAT raises `TypeError: Cannot setitem on a
+    # Categorical with a new category` merely because 0.0 isn't one of the
+    # three existing categories, regardless of whether any NaN is present.
+    # Casting to `str` first breaks out of the categorical dtype so
+    # `.fillna` behaves like it would on any ordinary float Series.
+    weights = on_daypart["attendance_tier"].astype(str).map(EVENT_TIER_WEIGHT).fillna(0.0)
     return float(weights.sum())
 
 
