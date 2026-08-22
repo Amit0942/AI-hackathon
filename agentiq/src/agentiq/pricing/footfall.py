@@ -12,13 +12,17 @@ D1's `AudienceProfileEngine` (now that D1 exists) rather than from booking
 history. `PricingEngine` does not depend on this to build a `PriceQuote` —
 it is a separate, citable number a rep sees alongside the quote.
 
-**Stated limitation, not silently ignored**: no future holiday calendar
-exists in the raw data (`ridership_actuals.is_holiday` is historical-only),
-so a forecast date is never treated as a holiday even if the campaign window
-covers one — Step 1.6 §6 found holidays behave like a heavier weekend, so
-this forecast is a slight underestimate on any holiday inside the window.
-Surfaced in the `Explanation.fallbacks_used`, per this repo's convention of
-stating limitations rather than hiding them.
+**Holiday gap closed** (`docs/decisions/1.8_holiday_ridership_effect.md`):
+a forecast date falling on a real US federal holiday (`pricing/holidays.py`,
+computed, not a lookup table) has its exposure scaled by the measured
+network-wide holiday ridership ratio (`config/pricing.yaml`
+`footfall_forecast.holiday_ridership_multiplier`, ~0.543 — holidays see
+*less* transit ridership network-wide, not more; the "malls up, offices
+down" hypothesis was tested against real data and found unsupported — see
+the decision doc). This is applied to the whole exposure figure as a stated
+approximation: the multiplier is measured from transit ridership
+specifically, and `AudienceProfile.est_daily_exposure` does not retain a
+separate transit-vs-resident-vs-POI breakdown to scale more precisely.
 """
 
 from __future__ import annotations
@@ -36,6 +40,7 @@ from agentiq.domain.explanation import Contribution, EvidenceRef, Explanation
 from agentiq.domain.inventory import Screen
 from agentiq.domain.pricing import FootfallForecast
 from agentiq.pricing.demand import EVENT_TIER_WEIGHT
+from agentiq.pricing.holidays import is_us_federal_holiday
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,7 @@ class _DayForecast:
     day_type: str
     base_exposure: float
     event_uplift: float
+    is_holiday: bool
 
 
 def _day_type(day: date) -> str:
@@ -62,6 +68,8 @@ def _forecast_one_day(
     day: date,
     repos: InMemoryRepositories,
     audience_engine: AudienceProfileEngine,
+    *,
+    holiday_ridership_multiplier: float,
 ) -> _DayForecast:
     day_type = _day_type(day)
     profile = audience_engine.profile(screen)
@@ -69,6 +77,10 @@ def _forecast_one_day(
         profile.daypart_weight_weekday if day_type == "weekday" else profile.daypart_weight_weekend
     )
     base_exposure = profile.est_daily_exposure * weights.get(time_block_id, 0.0)
+
+    is_holiday = is_us_federal_holiday(day)
+    if is_holiday:
+        base_exposure *= holiday_ridership_multiplier
 
     active_events = repos.context.events_active(screen.city_id, day, day)
     surge = 0.0
@@ -79,7 +91,9 @@ def _forecast_one_day(
             weights_series = on_daypart["attendance_tier"].astype(str).map(EVENT_TIER_WEIGHT)
             surge = float(weights_series.fillna(0.0).sum())
 
-    return _DayForecast(day_type=day_type, base_exposure=base_exposure, event_uplift=surge)
+    return _DayForecast(
+        day_type=day_type, base_exposure=base_exposure, event_uplift=surge, is_holiday=is_holiday
+    )
 
 
 def _measured_cv(screen: Screen, repos: InMemoryRepositories, day_types_present: set[str]) -> float:
@@ -111,6 +125,7 @@ def forecast_footfall(
     audience_engine: AudienceProfileEngine,
     *,
     std_dev_multiplier: float = 1.0,
+    holiday_ridership_multiplier: float = 1.0,
 ) -> FootfallForecast:
     """Expected exposure for *screen* x *time_block_id* over `[start_date, end_date]`.
 
@@ -126,7 +141,15 @@ def forecast_footfall(
 
     days = list(_daterange(start_date, end_date))
     per_day = [
-        _forecast_one_day(screen, time_block_id, day, repos, audience_engine) for day in days
+        _forecast_one_day(
+            screen,
+            time_block_id,
+            day,
+            repos,
+            audience_engine,
+            holiday_ridership_multiplier=holiday_ridership_multiplier,
+        )
+        for day in days
     ]
 
     base_total = sum(d.base_exposure for d in per_day)
@@ -134,6 +157,7 @@ def forecast_footfall(
     event_uplift_total = total - base_total
     n_days = len(per_day)
     expected_daily = total / n_days if n_days else 0.0
+    holiday_count = sum(1 for d in per_day if d.is_holiday)
 
     day_types_present = {d.day_type for d in per_day}
     cv = _measured_cv(screen, repos, day_types_present)
@@ -143,16 +167,14 @@ def forecast_footfall(
     ci_high = total + std_dev_multiplier * std_total
 
     fallbacks: list[str] = ["independent_days_assumption_for_confidence_interval"]
-    if any(d.event_uplift > 0 for d in per_day):
-        fallbacks.append("no_future_holiday_calendar_available")
     if cv == 0.0:
         fallbacks.append("no_measured_ridership_variance_zero_width_band_before_multiplier")
 
-    contributions = (
+    contributions = [
         Contribution(
             signal="audience_exposure_base",
             direction="positive" if base_total > 0 else "neutral",
-            weight=0.7,
+            weight=0.6,
             magnitude=base_total,
             detail=(
                 f"D1 exposure model x this window's weekday/weekend daypart mix "
@@ -162,11 +184,31 @@ def forecast_footfall(
         Contribution(
             signal="event_uplift",
             direction="positive" if event_uplift_total > 0 else "neutral",
-            weight=0.3,
+            weight=0.2,
             magnitude=event_uplift_total,
             detail="Attendance-tier-weighted uplift from events active on this block's daypart.",
         ),
-    )
+    ]
+    if holiday_count:
+        holiday_reduction = sum(
+            d.base_exposure / holiday_ridership_multiplier - d.base_exposure
+            for d in per_day
+            if d.is_holiday
+        ) * -1.0
+        contributions.append(
+            Contribution(
+                signal="holiday_ridership_effect",
+                direction="negative" if holiday_reduction < 0 else "neutral",
+                weight=0.2,
+                magnitude=holiday_reduction,
+                detail=(
+                    f"{holiday_count} US federal holiday day(s) in this window, exposure "
+                    f"scaled by the measured network-wide ratio "
+                    f"{holiday_ridership_multiplier:.3f} "
+                    "(docs/decisions/1.8_holiday_ridership_effect.md)."
+                ),
+            )
+        )
 
     explanation = Explanation(
         headline=(
@@ -174,7 +216,7 @@ def forecast_footfall(
             f"({start_date} to {end_date}), +/-{std_dev_multiplier:.1f} sigma band "
             f"[{ci_low:,.0f}, {ci_high:,.0f}]."
         ),
-        contributions=contributions,
+        contributions=tuple(contributions),
         evidence=(
             EvidenceRef(
                 table="ridership_actuals",
@@ -187,9 +229,9 @@ def forecast_footfall(
         ),
         confidence=Confidence.MEDIUM,
         confidence_reason=(
-            "Built from D1's exposure model and a measured (not invented) ridership "
-            "variance, but assumes independent days and has no future holiday calendar — "
-            "medium, not high."
+            "Built from D1's exposure model, a measured (not invented) ridership variance, "
+            "and a real holiday calendar with a measured (not invented) holiday multiplier — "
+            "but still assumes independent days within the window, so medium, not high."
         ),
         fallbacks_used=tuple(fallbacks),
     )

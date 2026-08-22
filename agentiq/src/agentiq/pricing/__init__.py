@@ -111,6 +111,13 @@ def _load_footfall_std_dev_multiplier(config_path: str | None = None) -> float:
     return float(raw["footfall_forecast"]["std_dev_multiplier"])
 
 
+def _load_holiday_ridership_multiplier(config_path: str | None = None) -> float:
+    path = ProjectPaths().config / "pricing.yaml" if config_path is None else config_path
+    with open(path, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh)
+    return float(raw["footfall_forecast"]["holiday_ridership_multiplier"])
+
+
 @dataclass
 class _CohortIndex:
     """Screen-ID sets for the two cohort-based ladder rungs, built once per engine instance."""
@@ -161,6 +168,7 @@ class PricingEngine:
         audience_engine: AudienceProfileEngine | None = None,
         human_override_config: HumanOverrideConfig | None = None,
         footfall_std_dev_multiplier: float | None = None,
+        holiday_ridership_multiplier: float | None = None,
     ) -> None:
         self.repos = repos
         loaded_config, loaded_half_life = load_price_band_config()
@@ -175,6 +183,11 @@ class PricingEngine:
             footfall_std_dev_multiplier
             if footfall_std_dev_multiplier is not None
             else _load_footfall_std_dev_multiplier()
+        )
+        self.holiday_ridership_multiplier = (
+            holiday_ridership_multiplier
+            if holiday_ridership_multiplier is not None
+            else _load_holiday_ridership_multiplier()
         )
 
         self._screens = repos.screens.all()
@@ -273,6 +286,48 @@ class PricingEngine:
             client_tier=client_tier,
         )
 
+    def price_for_client(
+        self,
+        client_id: str,
+        screen: Screen,
+        time_block_id: int,
+        slots: int,
+        on_date: date,
+        *,
+        client_target_price: float | None = None,
+        competitor_mentioned: bool = False,
+    ) -> PriceQuote:
+        """`.price()`, but resolving `client_tier` and `industry_vertical` from
+        `client_facts` automatically instead of requiring the caller to
+        already know them.
+
+        Before this method existed, nothing in the codebase actually called
+        `.price()` with a real `client_tier`/`industry_vertical` sourced from
+        `client_facts` — both silently defaulted to neutral unless a caller
+        happened to already have the values on hand. `negotiation_leverage`
+        is deliberately **not** used here: measured against real settled
+        bookings (`docs/decisions/1.9_client_segmentation.md`), high-leverage
+        clients paid *more*, not less, in the same city/screen-type cohort —
+        the opposite of the naive assumption, and confounded with client size
+        rather than a clean causal effect. Building a price adjustment on it
+        without controlling for that confound would risk a backwards rule,
+        so none is built.
+        """
+        row = self.repos.clients.get(client_id)
+        if row is None:
+            raise ValueError(f"Unknown client_id {client_id!r}")
+
+        return self.price(
+            screen,
+            time_block_id,
+            slots,
+            on_date,
+            industry_vertical=IndustryVertical(row["industry"]),
+            client_target_price=client_target_price,
+            competitor_mentioned=competitor_mentioned,
+            client_tier=str(row["client_tier"]),
+        )
+
     def forecast_footfall(
         self,
         screen: Screen,
@@ -293,6 +348,7 @@ class PricingEngine:
             self.repos,
             self.audience_engine,
             std_dev_multiplier=self.footfall_std_dev_multiplier,
+            holiday_ridership_multiplier=self.holiday_ridership_multiplier,
         )
 
     def apply_overrides(

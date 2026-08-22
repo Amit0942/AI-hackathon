@@ -78,8 +78,16 @@ footfall_forecast:
   # location/corridor's own observed day-to-day ridership variability
   # (measured from ridership_actuals, not assumed) — a +-1 sigma band.
   std_dev_multiplier: 1.0
-  # Stated limitation, not silently ignored: no future holiday calendar
-  # exists in the raw data (ridership_actuals.is_holiday is historical only),
-  # so a forecast date is never treated as a holiday even if the campaign
-  # window happens to cover one. Surfaced in the forecast's Explanation.
-  holiday_calendar_available: false
+  # Gap closed (docs/decisions/1.8_holiday_ridership_effect.md):
+  # pricing/holidays.py computes the real US federal calendar (all three
+  # cities' configured timezones are real US zones; applied uniformly since
+  # these are fictional cities with no distinct state calendar to model —
+  # a stated assumption, unlike the multiplier below).
+  holiday_calendar_available: true
+  # Measured, not assumed: mean ridership_actuals.actual_ridership on holiday
+  # rows / non-holiday rows, network-wide (19,838 holiday rows / 2,049,632
+  # total). Tested for differentiation by nearby POI type and by zone
+  # dominant_occupation — none found (0.540-0.550 across every category on
+  # 20k-100k-row samples each per the decision doc) — one global multiplier
+  # is the measured, honest choice, not a simplification.
+  holiday_ridership_multiplier: 0.5433
