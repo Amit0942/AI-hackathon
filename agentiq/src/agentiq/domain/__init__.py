@@ -9,6 +9,7 @@ for the glossary and the rationale behind each type's shape.
 from __future__ import annotations
 
 from agentiq.domain.campaign import CampaignBrief, GeographyConstraint
+from agentiq.domain.client import ClientSegment
 from agentiq.domain.enums import (
     BookingStatus,
     CampaignObjective,
@@ -47,6 +48,7 @@ __all__ = [
     "BookingStatus",
     "CampaignBrief",
     "CampaignObjective",
+    "ClientSegment",
     "ClientTier",
     "ColdStartRung",
     "Confidence",
