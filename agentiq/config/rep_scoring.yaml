@@ -1,0 +1,33 @@
+# Sales-rep performance scoring — a simulated layer on top of D3's real
+# PriceQuote guardrails. No sales_rep_id exists anywhere in the raw data
+# (bookings.csv, lost_leads.csv), so unlike every other config file in this
+# project, these weights are NOT calibrated against a measured figure —
+# there is no historical "this rep's real score was X" ground truth to fit
+# against. Stated placeholders, same honesty rule as config/scoring.yaml's
+# relevance weights.
+
+margin_score:
+  # margin_score = clip((sold_price - floor) / (target - floor), 0, 1).
+  # 1.0 = sold at or above the D3 target; 0.0 = sold at the floor, the worst
+  # price D3's own guardrail still allows. A sale above the cap or below the
+  # floor is logged as an anomaly (Step 6.6's convention), not silently
+  # clamped away.
+  reference: target_over_floor
+
+target_attainment:
+  # Revenue booked / target revenue, capped before it enters the blend so
+  # one oversized deal can't inflate a rep's score arbitrarily.
+  attainment_cap: 1.5
+
+blend:
+  # rep_score = margin_weight * average_margin_score
+  #           + attainment_weight * min(target_attainment_pct, attainment_cap) / attainment_cap
+  #
+  # This is the requested dynamic, made explicit and tunable rather than
+  # hardcoded: a rep chasing a big target can discount harder (their
+  # average_margin_score drops) and still hold their rep_score up if their
+  # revenue clears the target (their capped attainment term rises) — how
+  # much revenue can compensate for margin is exactly the ratio of these
+  # two weights, not a fixed rule buried in code.
+  margin_weight: 0.5
+  attainment_weight: 0.5

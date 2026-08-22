@@ -37,6 +37,7 @@ from agentiq.domain.inventory import (
 from agentiq.domain.optimizer import Package, PackageLine, ReachEstimate
 from agentiq.domain.pricing import DemandSignal, FootfallForecast, PriceQuote
 from agentiq.domain.recommendation import Recommendation
+from agentiq.domain.rep import RepPerformance, RepSale, SalesRep
 from agentiq.domain.scoring import RelevanceScore
 
 __all__ = [
@@ -67,7 +68,10 @@ __all__ = [
     "ReachEstimate",
     "Recommendation",
     "RelevanceScore",
+    "RepPerformance",
+    "RepSale",
     "RotationType",
+    "SalesRep",
     "Screen",
     "ScreenSize",
     "ScreenType",
