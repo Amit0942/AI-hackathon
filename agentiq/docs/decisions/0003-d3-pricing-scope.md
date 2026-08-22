@@ -202,3 +202,19 @@ guidance) — better to build it against the real API shape once D6 exists.
   as a surprise.
 - Carried forward in `HANDOFF.md` §8 for narrative context; this ADR is the
   durable record of *why*.
+
+## Update (2026-08-22): Steps 6.2 and 6.6 built
+
+Both since-deferred steps are now implemented (`HANDOFF.md` §11):
+
+- **6.2** did not have to wait on anything named in decision 1's "why" — it
+  needed D1 (Audience Profile Engine), which now exists, not D6. Built as
+  `pricing/footfall.py`'s `forecast_footfall()`, independent of `.price()`.
+- **6.6** was deferred specifically because "there is no caller for an
+  override endpoint" (decision 7). That reasoning still holds for the *API
+  endpoint* — none is added here — but the pure adjustment function itself
+  needed no caller beyond a direct test to be non-speculative: it consumes
+  an already-real `PriceQuote` and the three fields `config/pricing.yaml`
+  already committed to (`allowed_fields`), so it was buildable and testable
+  without D6. `PricingEngine.apply_overrides()` is the entrypoint; wiring an
+  actual HTTP endpoint to it remains D6's job.

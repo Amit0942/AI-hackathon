@@ -52,5 +52,34 @@ cold_start_ladder:
     confidence: low
 
 human_overrides:
-  # All human-supplied inputs are logged overrides, never silent edits.
+  # All human-supplied inputs are logged overrides, never silent edits (Step 6.6).
   allowed_fields: [expected_footfall, strategic_discount_intent, competitive_intel]
+  # expected_footfall: compared against the D1 model's own exposure estimate;
+  # the resulting relative delta adjusts target/recommended, clamped by the
+  # SAME single-factor guardrail as the Step 6.1 demand multiplier above
+  # (demand_multiplier.max_uplift_pct / max_discount_pct) so a rep's footfall
+  # claim cannot run away any further than the model's own demand signal can.
+  #
+  # strategic_discount_intent: a closed vocabulary, not a free-form number —
+  # a rep states intent, not a price, and the engine converts it to a bounded
+  # discount (still capped by demand_multiplier.max_discount_pct).
+  strategic_discount_pct:
+    none: 0.0
+    moderate: 0.10
+    aggressive: 0.20
+  # competitive_intel: presence of a non-empty note shrinks the cap's margin
+  # above target. 0.148 = 3.4% / 22.9%, the Step 1.5 §6.5 measured ratio of
+  # competitor-named vs. no-competitor price-gap survival at loss — a real
+  # measured figure, not an invented shrink constant.
+  competitive_intel_cap_shrink: 0.148
+
+footfall_forecast:
+  # Step 6.2: confidence interval width, in standard deviations of the
+  # location/corridor's own observed day-to-day ridership variability
+  # (measured from ridership_actuals, not assumed) — a +-1 sigma band.
+  std_dev_multiplier: 1.0
+  # Stated limitation, not silently ignored: no future holiday calendar
+  # exists in the raw data (ridership_actuals.is_holiday is historical only),
+  # so a forecast date is never treated as a holiday even if the campaign
+  # window happens to cover one. Surfaced in the forecast's Explanation.
+  holiday_calendar_available: false

@@ -42,7 +42,7 @@ DEFAULT_RECENCY_HALF_LIFE_DAYS = 21.0
 
 #: Event attendance tiers, per 1.6's measured vocabulary — banded so a single
 #: outlier attendance figure cannot distort the surge multiplier.
-_EVENT_TIER_WEIGHT = {"small": 0.10, "medium": 0.25, "large": 0.50}
+EVENT_TIER_WEIGHT = {"small": 0.10, "medium": 0.25, "large": 0.50}
 
 
 def recency_decay_weight(age_days: float, *, half_life_days: float) -> float:
@@ -134,7 +134,7 @@ def event_surge(
     on_daypart = active_events.loc[active_events["primary_impact_daypart"] == time_block_daypart]
     if on_daypart.empty:
         return 0.0
-    weights = on_daypart["attendance_tier"].map(_EVENT_TIER_WEIGHT).fillna(0.0)
+    weights = on_daypart["attendance_tier"].map(EVENT_TIER_WEIGHT).fillna(0.0)
     return float(weights.sum())
 
 

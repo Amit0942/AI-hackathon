@@ -9,10 +9,55 @@ Step 6's exit criteria demand as a property test, not a spot check.
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agentiq.domain.enums import ColdStartRung, Confidence
 from agentiq.domain.explanation import Explanation
+
+
+class FootfallForecast(BaseModel):
+    """Step 6.2: expected audience exposure for a screen x time-block over a
+    future campaign window, with a measured confidence interval.
+
+    Distinct from `DemandSignal` (Step 6.1, competitive/pipeline pressure):
+    this is a forward-looking *exposure* number — how many people are
+    expected to see the screen — built from D1's own exposure model plus
+    day-type mix and event uplift over the window, not from booking history.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    screen_id: str
+    time_block_id: int = Field(ge=1, le=6)
+    start_date: date
+    end_date: date
+    expected_total_footfall: float = Field(ge=0.0)
+    expected_daily_footfall: float = Field(ge=0.0)
+    confidence_interval_low: float = Field(ge=0.0)
+    confidence_interval_high: float = Field(ge=0.0)
+    explanation: Explanation
+
+    @model_validator(mode="after")
+    def _window_and_interval_valid(self) -> FootfallForecast:
+        if self.end_date < self.start_date:
+            raise ValueError(f"end_date {self.end_date} before start_date {self.start_date}")
+        if not (
+            self.confidence_interval_low
+            <= self.expected_total_footfall
+            <= self.confidence_interval_high
+        ):
+            raise ValueError(
+                f"expected_total_footfall {self.expected_total_footfall} outside its own "
+                f"confidence interval [{self.confidence_interval_low}, "
+                f"{self.confidence_interval_high}] for {self.screen_id}/{self.time_block_id}."
+            )
+        return self
+
+    @property
+    def window_days(self) -> int:
+        return (self.end_date - self.start_date).days + 1
 
 
 class DemandSignal(BaseModel):

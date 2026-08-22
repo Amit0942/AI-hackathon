@@ -1,10 +1,14 @@
 """D3 — Demand Forecasting & Pricing Model (Phase 6).
 
-This pass builds Steps 6.1 (demand intensity index), 6.3 (price band), and
-6.5 (cold-start fallback ladder) — see `docs/decisions/0003-d3-pricing-scope.md`
-for why 6.2/6.4/6.6 are deferred. Public entrypoint: `PricingEngine.price()`,
-which takes a `Screen` and a requested slot/date and returns a `PriceQuote`
-with a full `Explanation`, ready for Phase 7's optimizer or direct use.
+Steps 6.1 (demand intensity index), 6.3 (price band), 6.5 (cold-start
+ladder), and 6.4 (win-probability recommended price) are built. This pass
+adds the last two: 6.2 (expected-footfall forecast, `forecast_footfall`) and
+6.6 (human-in-the-loop overrides, `apply_overrides`) — see
+`docs/decisions/0003-d3-pricing-scope.md` for the original deferral
+reasoning. Public entrypoint: `PricingEngine`, which takes a `Screen` and
+returns a `PriceQuote` (`.price()`), a `FootfallForecast` (`.forecast_footfall()`),
+or an overridden `PriceQuote` (`.apply_overrides()`) — every one with a full
+`Explanation`, ready for Phase 7's optimizer or direct use.
 
 The engine depends only on repository protocols (`agentiq.data.repositories`)
 and raw config, never on file paths or ad hoc pandas loading — Phase 6 code
@@ -18,12 +22,13 @@ from datetime import date
 
 import yaml
 
+from agentiq.audience import AudienceProfileEngine
 from agentiq.data.occupancy import occupancy_events
 from agentiq.data.paths import ProjectPaths
 from agentiq.data.repositories import InMemoryRepositories
 from agentiq.domain.enums import ColdStartRung, IndustryVertical
 from agentiq.domain.inventory import Screen
-from agentiq.domain.pricing import DemandSignal, PriceQuote
+from agentiq.domain.pricing import DemandSignal, FootfallForecast, PriceQuote
 from agentiq.pricing.bands import PriceBandConfig, build_price_quote, select_cold_start_rung
 from agentiq.pricing.base_rate import (
     FittedBaseRateModel,
@@ -31,6 +36,12 @@ from agentiq.pricing.base_rate import (
     join_screen_attributes,
 )
 from agentiq.pricing.demand import DemandIndexInputs, compute_demand_signal
+from agentiq.pricing.footfall import forecast_footfall
+from agentiq.pricing.overrides import (
+    HumanOverrideConfig,
+    apply_human_overrides,
+    load_human_override_config,
+)
 from agentiq.pricing.win_probability import (
     UNKNOWN_TIER,
     FittedWinModel,
@@ -45,6 +56,8 @@ __all__ = [
     "DemandSignal",
     "FittedBaseRateModel",
     "FittedWinModel",
+    "FootfallForecast",
+    "HumanOverrideConfig",
     "PriceBandConfig",
     "PriceQuote",
     "PricingEngine",
@@ -52,6 +65,7 @@ __all__ = [
     "compute_demand_signal",
     "fit_base_rate_model",
     "fit_win_model",
+    "load_human_override_config",
     "load_price_band_config",
     "trade_off_curve",
 ]
@@ -88,6 +102,13 @@ def load_price_band_config(config_path: str | None = None) -> tuple[PriceBandCon
     )
     half_life_days = float(raw["recency_decay"]["half_life_days"])
     return config, half_life_days
+
+
+def _load_footfall_std_dev_multiplier(config_path: str | None = None) -> float:
+    path = ProjectPaths().config / "pricing.yaml" if config_path is None else config_path
+    with open(path, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh)
+    return float(raw["footfall_forecast"]["std_dev_multiplier"])
 
 
 @dataclass
@@ -137,11 +158,24 @@ class PricingEngine:
         *,
         config: PriceBandConfig | None = None,
         recency_half_life_days: float | None = None,
+        audience_engine: AudienceProfileEngine | None = None,
+        human_override_config: HumanOverrideConfig | None = None,
+        footfall_std_dev_multiplier: float | None = None,
     ) -> None:
         self.repos = repos
         loaded_config, loaded_half_life = load_price_band_config()
         self.config = config or loaded_config
         self.recency_half_life_days = recency_half_life_days or loaded_half_life
+        # Step 6.2 now depends on D1 directly (unlike segment_heat's optional
+        # IndustryVertical, D1 exists today) — default-construct one if the
+        # caller doesn't already have one to share.
+        self.audience_engine = audience_engine or AudienceProfileEngine(repos)
+        self.human_override_config = human_override_config or load_human_override_config()
+        self.footfall_std_dev_multiplier = (
+            footfall_std_dev_multiplier
+            if footfall_std_dev_multiplier is not None
+            else _load_footfall_std_dev_multiplier()
+        )
 
         self._screens = repos.screens.all()
         screens_frame = repos.lake["screens"]
@@ -237,6 +271,50 @@ class PricingEngine:
             reference_price=reference,
             competitor_mentioned=competitor_mentioned,
             client_tier=client_tier,
+        )
+
+    def forecast_footfall(
+        self,
+        screen: Screen,
+        time_block_id: int,
+        start_date: date,
+        end_date: date,
+    ) -> FootfallForecast:
+        """Step 6.2 — expected audience exposure over a future campaign window.
+
+        Independent of `.price()`: a rep-facing number shown alongside a
+        quote, not an input `build_price_quote` currently consumes.
+        """
+        return forecast_footfall(
+            screen,
+            time_block_id,
+            start_date,
+            end_date,
+            self.repos,
+            self.audience_engine,
+            std_dev_multiplier=self.footfall_std_dev_multiplier,
+        )
+
+    def apply_overrides(
+        self,
+        quote: PriceQuote,
+        overrides: dict[str, float | str],
+        *,
+        model_expected_footfall: float | None = None,
+    ) -> PriceQuote:
+        """Step 6.6 — apply rep-supplied overrides to an already-built `PriceQuote`.
+
+        *model_expected_footfall* lets a caller pass `forecast_footfall(...)
+        .expected_daily_footfall` as the baseline an `expected_footfall`
+        override is compared against; without it, that override is logged
+        but has no effect (`fallbacks_used` says so explicitly).
+        """
+        return apply_human_overrides(
+            quote,
+            overrides,
+            config=self.human_override_config,
+            price_band_config=self.config,
+            model_expected_footfall=model_expected_footfall,
         )
 
     def _cohort_ids_for(self, screen: Screen) -> tuple[str, ...]:

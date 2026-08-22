@@ -35,7 +35,7 @@ from agentiq.domain.inventory import (
     SellableUnit,
 )
 from agentiq.domain.optimizer import Package, PackageLine, ReachEstimate
-from agentiq.domain.pricing import DemandSignal, PriceQuote
+from agentiq.domain.pricing import DemandSignal, FootfallForecast, PriceQuote
 from agentiq.domain.recommendation import Recommendation
 from agentiq.domain.scoring import RelevanceScore
 
@@ -54,6 +54,7 @@ __all__ = [
     "DemandSignal",
     "EvidenceRef",
     "Explanation",
+    "FootfallForecast",
     "GeographyConstraint",
     "IndustryVertical",
     "LocationType",
